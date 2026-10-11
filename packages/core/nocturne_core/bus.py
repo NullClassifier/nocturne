@@ -5,13 +5,19 @@ from __future__ import annotations
 
 import asyncio
 import json
-from collections import defaultdict
+from collections import defaultdict, deque
 from collections.abc import AsyncIterator
 from typing import Any
 
 import redis.asyncio as redis
 
 from .config import settings
+
+# Shell output channels ("shell:<id>") get a replayable transcript so the
+# Terminal panel can show the last known state when nothing is streaming.
+_SHELL_PREFIX = "shell:"
+_SHELL_BUF_MAX = 4000   # chunks retained per shell (rolling)
+_SHELL_BUF_TTL = 86400  # seconds; drop stale transcripts after a day
 
 
 def events_channel(run_id: str) -> str:
@@ -48,6 +54,16 @@ def browser_channel(session_id: str) -> str:
 class _MemoryBackend:
     def __init__(self) -> None:
         self._subs: dict[str, set[asyncio.Queue[str]]] = defaultdict(set)
+        self._bufs: dict[str, deque[str]] = {}
+
+    def buffer(self, channel: str, message: str) -> None:
+        buf = self._bufs.get(channel)
+        if buf is None:
+            buf = self._bufs[channel] = deque(maxlen=_SHELL_BUF_MAX)
+        buf.append(message)
+
+    def history(self, channel: str) -> str:
+        return "".join(self._bufs.get(channel, ()))
 
     async def publish(self, channel: str, message: str) -> None:
         for q in list(self._subs.get(channel, ())):
@@ -96,10 +112,38 @@ class Bus:
     async def publish(self, channel: str, message: str) -> None:
         if self._redis is not None:
             await self._redis.publish(channel, message)
+            if channel.startswith(_SHELL_PREFIX):
+                await self._record(channel, message)
         elif self._memory is not None:
             await self._memory.publish(channel, message)
+            if channel.startswith(_SHELL_PREFIX):
+                self._memory.buffer(channel, message)
         else:
             raise RuntimeError("bus not connected")
+
+    async def _record(self, channel: str, message: str) -> None:
+        """Append to a shell channel's rolling transcript (Redis list, capped + TTL)."""
+        key = f"buf:{channel}"
+        try:
+            pipe = self._redis.pipeline()
+            pipe.rpush(key, message)
+            pipe.ltrim(key, -_SHELL_BUF_MAX, -1)
+            pipe.expire(key, _SHELL_BUF_TTL)
+            await pipe.execute()
+        except Exception:
+            pass  # buffering is best-effort; never break live publish
+
+    async def history(self, channel: str) -> str:
+        """The last known transcript for a shell channel, '' if none."""
+        if self._redis is not None:
+            try:
+                parts = await self._redis.lrange(f"buf:{channel}", 0, -1)
+                return "".join(parts)
+            except Exception:
+                return ""
+        if self._memory is not None:
+            return self._memory.history(channel)
+        return ""
 
     async def publish_json(self, channel: str, obj: Any) -> None:
         await self.publish(channel, json.dumps(obj))

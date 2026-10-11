@@ -89,6 +89,11 @@ async def ws_shell(ws: WebSocket, shell_id: str) -> None:
         await ws.close(code=4401)
         return
     await ws.accept()
+    # Replay the last known transcript first, so the panel shows the shell's
+    # last state even when nothing is streaming right now; then go live.
+    history = await bus.history(shell_channel(shell_id))
+    if history:
+        await ws.send_text(history)
     await _pump(ws, shell_channel(shell_id))
 
 

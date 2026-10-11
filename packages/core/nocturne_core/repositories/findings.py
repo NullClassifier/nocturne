@@ -31,7 +31,7 @@ async def get(s: AsyncSession, fid: str) -> Finding | None:
 
 
 async def create(s: AsyncSession, data: dict) -> Finding:
-    row = Finding(id=data.get("id") or ids.new_id("RC"), created_at=data.get("created_at") or ids.now_iso(),
+    row = Finding(id=data.get("id") or ids.new_id("NOC"), created_at=data.get("created_at") or ids.now_iso(),
                   **{k: v for k, v in data.items() if k not in ("id", "created_at")})
     s.add(row)
     await s.flush()

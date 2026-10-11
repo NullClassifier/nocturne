@@ -83,7 +83,7 @@ async def generate_report(report_id: str) -> None:
 
         narrative = await write_narrative(llm, session, findings, hosts, loot)
         generated_at = ids.now_iso()
-        report_ref = "RC-" + report_id.replace("rep-", "")[:8].upper()
+        report_ref = "NOC-" + report_id.replace("rep-", "")[:8].upper()
 
         artifacts: dict[str, str] = {}
         for fmt in formats:
