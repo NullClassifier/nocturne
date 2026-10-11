@@ -1,0 +1,12 @@
+[project]
+name = "nocturne-worker"
+version = "0.12.15"
+description = "NOCTURNE background worker (arq)"
+requires-python = ">=3.12"
+dependencies = ["nocturne-core", "arq>=0.26"]
+
+[tool.uv.sources]
+nocturne-core = { workspace = true }
+
+[tool.uv]
+package = false

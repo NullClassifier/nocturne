@@ -1,0 +1,196 @@
+name: nocturne
+
+x-app-env: &app-env
+  NOCTURNE_RUN_MODE: ${NOCTURNE_RUN_MODE:-live}
+  NOCTURNE_DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-nocturne}:${POSTGRES_PASSWORD:-nocturne}@postgres:5432/${POSTGRES_DB:-nocturne}
+  NOCTURNE_REDIS_URL: redis://redis:6379/0
+  NOCTURNE_S3_ENDPOINT: http://minio:9000
+  NOCTURNE_S3_PRESIGN_ENDPOINT: ${NOCTURNE_S3_PRESIGN_ENDPOINT:-http://localhost:9000}
+  NOCTURNE_S3_ACCESS_KEY: ${MINIO_ROOT_USER:-minioadmin}
+  NOCTURNE_S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
+  NOCTURNE_S3_REGION: ${NOCTURNE_S3_REGION:-us-east-1}
+  NOCTURNE_ENV: ${NOCTURNE_ENV:-production}
+  NOCTURNE_SECRET_KEY: ${NOCTURNE_SECRET_KEY:-}
+  NOCTURNE_SECRET_KEY_FILE: /run/nocturne/secret_key
+  NOCTURNE_JWT_SECRET: ${NOCTURNE_JWT_SECRET:-}
+  NOCTURNE_JWT_SECRET_FILE: /run/nocturne/jwt_secret
+  NOCTURNE_ADMIN_USERNAME: ${NOCTURNE_ADMIN_USERNAME:-admin}
+  NOCTURNE_ADMIN_PASSWORD: ${NOCTURNE_ADMIN_PASSWORD:-}
+  NOCTURNE_ADMIN_PASSWORD_FILE: /run/nocturne/admin_password
+  NOCTURNE_COOKIE_SECURE: ${NOCTURNE_COOKIE_SECURE:-true}
+  NOCTURNE_CORS_ORIGINS: ${NOCTURNE_CORS_ORIGINS:-http://localhost:5183}
+  NOCTURNE_COMPOSE_DIR: ${NOCTURNE_COMPOSE_DIR:-}
+  NOCTURNE_UPDATER_IMAGE: ${NOCTURNE_UPDATER_IMAGE:-docker:cli}
+  NOCTURNE_KNOWN_HOSTS: /var/lib/nocturne/known_hosts
+  NOCTURNE_CALLBACK_HOST: ${NOCTURNE_CALLBACK_HOST:-host.docker.internal}
+  NOCTURNE_CALLBACK_PORT_MIN: ${NOCTURNE_CALLBACK_PORT_MIN:-4444}
+  NOCTURNE_CALLBACK_PORT_MAX: ${NOCTURNE_CALLBACK_PORT_MAX:-4464}
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-nocturne}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-nocturne}
+      POSTGRES_DB: ${POSTGRES_DB:-nocturne}
+    volumes:
+      - nocturne_pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-nocturne}']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  minio:
+    image: quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
+    volumes:
+      - nocturne_minio:/data
+    healthcheck:
+      test: ['CMD-SHELL', 'mc ready local || exit 1']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  init-secrets:
+    image: nocturne-api:latest
+    entrypoint: ['sh', '-c']
+    command:
+      - |
+        set -e
+        d=/run/nocturne
+        mkdir -p "$$d"
+        [ -s "$$d/secret_key" ] || (umask 077; python -c 'from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())' > "$$d/secret_key")
+        [ -s "$$d/jwt_secret" ] || (umask 077; python -c 'import secrets; print(secrets.token_urlsafe(48))' > "$$d/jwt_secret")
+        if [ ! -s "$$d/admin_password" ]; then
+          umask 077; python -c 'import secrets; print(secrets.token_urlsafe(18))' > "$$d/admin_password"
+          echo "=================================================================="
+          echo " NOCTURNE first run: generated an admin password:"
+          echo "     $$(cat "$$d/admin_password")"
+          echo " Stored in the nocturne_secrets volume. Log in and change it."
+          echo "=================================================================="
+        fi
+    volumes:
+      - nocturne_secrets:/run/nocturne
+    restart: 'no'
+
+  migrate:
+    image: nocturne-api:latest
+    environment: *app-env
+    command: ['sh', '-c', 'noct db upgrade && noct seed']
+    restart: 'no'
+    volumes:
+      - nocturne_secrets:/run/nocturne:ro
+    depends_on:
+      init-secrets:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+
+  api:
+    image: nocturne-api:latest
+    restart: unless-stopped
+    environment: *app-env
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - nocturne_secrets:/run/nocturne:ro
+      - nocturne_data:/var/lib/nocturne
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+    healthcheck:
+      test: ['CMD', 'python', '-c', "import urllib.request; urllib.request.urlopen('http://localhost:8080/health', timeout=4).read()"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+
+  worker:
+    image: nocturne-worker:latest
+    restart: unless-stopped
+    environment: *app-env
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - nocturne_secrets:/run/nocturne:ro
+      - nocturne_data:/var/lib/nocturne
+    extra_hosts:
+      - 'host.docker.internal:host-gateway'
+    healthcheck:
+      test: ['CMD', 'python', '-c', 'import worker.settings']
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 40s
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+
+  web:
+    image: nocturne-web:latest
+    restart: unless-stopped
+    healthcheck:
+      test: ['CMD', 'wget', '-q', '-O', '/dev/null', 'http://localhost:80/']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    depends_on:
+      api:
+        condition: service_healthy
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - '80:80'
+      - '443:443'
+      - '443:443/udp'
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS:-:80}
+    volumes:
+      - ./docker/caddy/${CADDYFILE:-Caddyfile}:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      web:
+        condition: service_healthy
+      api:
+        condition: service_healthy
+
+volumes:
+  nocturne_pg: {}
+  nocturne_data: {}
+  nocturne_minio: {}
+  nocturne_secrets: {}
+  caddy_data: {}
+  caddy_config: {}
