@@ -327,3 +327,33 @@
 }
 .msg-in { animation: msg-in 0.16s ease-out; }
 @media (prefers-reduced-motion: reduce) { .msg-in { animation: none; } }
+
+/* ------------------------------------------------------------------ *
+ * BIOS boot login (AuthGate / BiosLogin). CRT scanline wash + caret.
+ * ------------------------------------------------------------------ */
+.rc-caret {
+  display: inline-block;
+  animation: rc-blink 1.05s steps(1) infinite;
+}
+.bios-scan {
+  z-index: 0;
+  background: repeating-linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--color-text) 4%, transparent) 0px,
+    color-mix(in srgb, var(--color-text) 4%, transparent) 1px,
+    transparent 2px,
+    transparent 3px
+  );
+  mix-blend-mode: overlay;
+  opacity: 0.5;
+  animation: bios-flicker 5.5s ease-in-out infinite;
+}
+@keyframes bios-flicker {
+  0%, 100% { opacity: 0.42; }
+  48%      { opacity: 0.52; }
+  50%      { opacity: 0.30; }
+  52%      { opacity: 0.5; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rc-caret, .bios-scan { animation: none; }
+}
