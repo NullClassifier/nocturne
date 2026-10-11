@@ -34,7 +34,8 @@ PRICES: dict[str, tuple[float, float]] = {
     "deepseek-v4": (0.6, 1.7),
 }
 
-_FREE_PROVIDERS = {"ollama"}
+# Self-hosted models cost nothing per token. "custom" is our remote Gemma API.
+_FREE_PROVIDERS = {"ollama", "custom"}
 
 
 def _norm(model: str) -> str:

@@ -282,8 +282,8 @@ class BrowserControlInput(Camel):
 
 # ---- settings / providers ----
 class LlmSettings(Camel):
-    provider: str = "ollama"
-    model: str = "qwen3"
+    provider: str = "custom"
+    model: str = "gemma-local"
     api_key: str = ""
     api_base: str | None = ""
     reasoning_effort: str = "high"

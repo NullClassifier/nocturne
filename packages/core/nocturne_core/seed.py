@@ -39,39 +39,10 @@ from .security import hash_password
 from .storage import storage
 
 PROVIDERS = [
-    # Local by default: no API key required. Everything works on a local model;
-    # the keyed providers below are optional upgrades.
-    {"id": "ollama", "label": "Local (Ollama)", "models": ["qwen3", "llama3.1", "qwen2.5", "deepseek-r1", "phi4", "glm-4", "llama3.3"], "needs_key": False},
-    {"id": "openai", "label": "OpenAI", "models": ["gpt-5.6", "gpt-5.5", "gpt-5.4-mini", "gpt-5.4", "o4-mini"], "needs_key": True},
-    {"id": "anthropic", "label": "Anthropic", "models": ["claude-opus-5", "claude-sonnet-5", "claude-haiku-4-5"], "needs_key": True},
-    {"id": "google", "label": "Google Gemini", "models": ["gemini-3.8-flash", "gemini-3.8-pro", "gemini-3.6-flash"], "needs_key": True},
-    {"id": "xai", "label": "xAI (Grok)", "models": ["grok-5", "grok-4-mini", "grok-code-2"], "needs_key": True},
-    {"id": "deepseek", "label": "DeepSeek", "models": ["deepseek-v4-pro", "deepseek-v4-flash", "deepseek-v4.1-flash", "deepseek-r2"], "needs_key": True},
-    {"id": "moonshot", "label": "Moonshot (Kimi)", "models": ["kimi-k3", "kimi-k2.7-code"], "needs_key": True},
-    {"id": "zhipu", "label": "Zhipu (GLM)", "models": ["glm-5.3", "glm-5.2", "glm-4.6", "glm-4.5-air"], "needs_key": True},
-    {"id": "qwen", "label": "Alibaba Qwen", "models": ["qwen3.8-max", "qwen3.5-flash", "qwen3-coder"], "needs_key": True},
-    {"id": "mistral", "label": "Mistral", "models": ["mistral-large-3", "mistral-small-3", "codestral-2"], "needs_key": True},
-    {"id": "groq", "label": "Groq (fast)", "models": ["llama-4.1-70b", "llama-4.1-8b", "mixtral-8x22b"], "needs_key": True},
-    {"id": "together", "label": "Together AI", "models": ["meta-llama/Llama-4-70b", "Qwen/Qwen3-72b", "deepseek-ai/DeepSeek-V4"], "needs_key": True},
-    {"id": "fireworks", "label": "Fireworks AI", "models": ["llama-v4-70b", "qwen3-72b", "deepseek-v4"], "needs_key": True},
-    {"id": "cohere", "label": "Cohere", "models": ["command-r2", "command-r2-plus"], "needs_key": True},
-    {"id": "perplexity", "label": "Perplexity", "models": ["sonar-pro", "sonar-reasoning"], "needs_key": True},
-    {"id": "deepinfra", "label": "DeepInfra", "models": ["meta-llama/Llama-4-70b", "Qwen/Qwen3-72b"], "needs_key": True},
-    {"id": "openrouter", "label": "OpenRouter", "models": [
-        "anthropic/claude-opus-5", "anthropic/claude-sonnet-5", "anthropic/claude-haiku-4-5",
-        "openai/gpt-5.6", "openai/gpt-5.5", "openai/o4-mini",
-        "google/gemini-3.1-pro", "google/gemini-3.6-flash",
-        "x-ai/grok-5", "x-ai/grok-code-2",
-        "deepseek/deepseek-v4-pro", "deepseek/deepseek-v4.1-flash", "deepseek/deepseek-r2",
-        "moonshotai/kimi-k3", "moonshotai/kimi-k2.7-code",
-        "z-ai/glm-5.3", "z-ai/glm-5.2", "z-ai/glm-4.6",
-        "qwen/qwen3.8-max", "qwen/qwen3-coder",
-        "mistralai/mistral-large-3", "mistralai/codestral-2",
-        "meta-llama/llama-4-70b", "meta-llama/llama-4-8b",
-        "nvidia/nemotron-4-340b", "cohere/command-r2", "perplexity/sonar-pro",
-        "microsoft/phi-5", "amazon/nova-pro",
-    ], "needs_key": True},
-    {"id": "custom", "label": "Custom (OpenAI-compatible)", "models": [], "needs_key": True},
+    # Single provider: the self-hosted Gemma model, served behind an
+    # OpenAI-compatible API. Provider id stays "custom" so LiteLLM routes it as
+    # openai/<model> against the configured api_base.
+    {"id": "custom", "label": "Gemma (remote API)", "models": ["gemma-local"], "needs_key": True},
 ]
 
 
