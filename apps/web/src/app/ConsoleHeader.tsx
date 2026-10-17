@@ -79,7 +79,7 @@ export function ConsoleHeader({ sessionId }: { sessionId: string | null }) {
       )}
       {run && (
         <span className="spend tab">
-          {fmtTokens(run.tokens)} tok · <b>${run.costUsd.toFixed(2)}</b>
+          {fmtTokens(run.tokens ?? 0)} tok · <b>${(run.costUsd ?? 0).toFixed(2)}</b>
         </span>
       )}
       {run && (

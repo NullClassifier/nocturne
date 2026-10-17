@@ -19,6 +19,11 @@ PRICES: dict[str, tuple[float, float]] = {
     "gemini-3.1-pro": (2.5, 10.0),
     "gemini-3.6-flash": (0.3, 2.5),
     "gemini-3.1-flash-lite": (0.1, 0.4),
+    # Gemma (hosted via Google AI Studio / OpenRouter). Approximate fallback
+    # rates; a self-hosted "custom" endpoint is still billed at $0 (see below).
+    "gemma-4-31b-it": (0.15, 0.30),
+    "gemma-3-27b-it": (0.10, 0.20),
+    "gemma-2-9b-it": (0.05, 0.10),
     "deepseek-v4-pro": (0.6, 1.7),
     "deepseek-v4-flash": (0.3, 0.9),
     "deepseek-v4.1-flash": (0.3, 0.9),
