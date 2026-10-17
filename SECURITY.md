@@ -19,7 +19,7 @@ Preferred: use GitHub's private vulnerability reporting on this repository. Go t
 the Security tab and click "Report a vulnerability". This opens a private
 advisory that only you and the maintainers can see.
 
-Alternative: email the maintainer at fuadelizade469@gmail.com.
+Alternative: email the maintainer at pasayevh35@gmail.com.
 
 Please include:
 

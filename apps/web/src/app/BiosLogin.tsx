@@ -41,12 +41,12 @@ type Line = { text: string; tone?: 'ok' | 'accent' | 'muted' | 'warn' };
 
 const BOOT_LINES: Line[] = [
   { text: 'NOCTURNE BIOS v4.8 — Operator Firmware', tone: 'accent' },
-  { text: '(c) team-netrunners · authorized use only', tone: 'muted' },
+  { text: '(c) NOCTURNE · authorized use only', tone: 'muted' },
   { text: '' },
   { text: 'POST .................................. OK', tone: 'ok' },
   { text: 'CPU  : llm-orchestrator  x1 .......... OK', tone: 'ok' },
   { text: 'MEM  : context window 32768K ......... OK', tone: 'ok' },
-  { text: 'MODEL: gemma-local @ remote api ...... OK', tone: 'ok' },
+  { text: 'MODEL: gemma · provider-agnostic ..... OK', tone: 'ok' },
   { text: 'EXEC : docker / kali backend ......... OK', tone: 'ok' },
   { text: 'STORE: object store (s3) ............. OK', tone: 'ok' },
   { text: 'BUS  : redis pub/sub ................. OK', tone: 'ok' },
