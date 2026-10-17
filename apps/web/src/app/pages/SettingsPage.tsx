@@ -56,6 +56,7 @@ export function SettingsPage() {
   const [draft, setDraft] = useState<Settings | null>(null);
   const [keyFor, setKeyFor] = useState<ProviderCatalogEntry | null>(null);
   const [keyInput, setKeyInput] = useState('');
+  const [baseInput, setBaseInput] = useState('');
   const [ngrokInput, setNgrokInput] = useState('');
 
   useEffect(() => {
@@ -115,13 +116,17 @@ export function SettingsPage() {
     }
   };
 
+  const needsBase = keyFor?.id === 'custom';
+
   const saveKey = async () => {
     if (!keyFor || !keyInput.trim() || !keys) return;
-    const apiBase = keys.find((k) => k.providerId === keyFor.id)?.apiBase ?? null;
+    if (needsBase && !baseInput.trim()) return;
+    const apiBase = needsBase ? baseInput.trim() : (keys.find((k) => k.providerId === keyFor.id)?.apiBase ?? null);
     try {
       await setKey.mutateAsync({ providerId: keyFor.id, apiKey: keyInput.trim(), apiBase });
       setKeyFor(null);
       setKeyInput('');
+      setBaseInput('');
       toast(`Key saved for ${keyFor.label}`, 'success');
     } catch {
       toast(`Could not save the key for ${keyFor.label}`, 'error');
@@ -229,6 +234,7 @@ export function SettingsPage() {
                             onClick={() => {
                               setKeyFor(p);
                               setKeyInput('');
+                              setBaseInput(keys?.find((k) => k.providerId === p.id)?.apiBase ?? '');
                             }}
                           >
                             {has ? 'Replace' : 'Add key'}
@@ -449,18 +455,30 @@ export function SettingsPage() {
             <button type="button" className="btn" onClick={() => setKeyFor(null)}>
               Cancel
             </button>
-            <button type="button" className="btn pri" disabled={!keyInput.trim() || setKey.isPending || !keys} onClick={saveKey}>
+            <button type="button" className="btn pri" disabled={!keyInput.trim() || (needsBase && !baseInput.trim()) || setKey.isPending || !keys} onClick={saveKey}>
               Save key
             </button>
           </>
         }
       >
+        {needsBase && (
+          <label className="field" style={{ margin: '0 0 12px' }}>
+            <span className="label">API endpoint (base URL)</span>
+            <input
+              className="input mono"
+              autoFocus
+              value={baseInput}
+              placeholder="https://host:port/v1"
+              onChange={(e) => setBaseInput(e.target.value)}
+            />
+          </label>
+        )}
         <label className="field" style={{ margin: 0 }}>
           <span className="label">API key</span>
           <input
             className="input mono"
             type="password"
-            autoFocus
+            autoFocus={!needsBase}
             value={keyInput}
             placeholder="sk-…"
             onChange={(e) => setKeyInput(e.target.value)}

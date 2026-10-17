@@ -39,10 +39,23 @@ from .security import hash_password
 from .storage import storage
 
 PROVIDERS = [
-    # Single provider: the self-hosted Gemma model, served behind an
-    # OpenAI-compatible API. Provider id stays "custom" so LiteLLM routes it as
-    # openai/<model> against the configured api_base.
-    {"id": "custom", "label": "Gemma (remote API)", "models": ["gemma-local"], "needs_key": True},
+    # Gemma, three ways. Pick one in Settings and paste a key (or, for the
+    # internal option, a key + endpoint). All route through LiteLLM.
+    #
+    # 1) Google AI Studio (Gemini API): a single free key from
+    #    https://aistudio.google.com/apikey. Gemma 4 supports tool calling here,
+    #    which the agent loop needs. LiteLLM routes it as gemini/<model>.
+    {"id": "google", "label": "Google AI Studio (Gemma)",
+     "models": ["gemma-4-31b-it", "gemma-3-27b-it"], "needs_key": True},
+    # 2) OpenRouter: one key at https://openrouter.ai/keys, hosts Gemma 4/3.
+    #    Use the PAID model (not :free) so tool-capable providers are selected.
+    {"id": "openrouter", "label": "OpenRouter (Gemma)",
+     "models": ["google/gemma-4-31b-it", "google/gemma-3-27b-it"], "needs_key": True},
+    # 3) Internal / custom endpoint: any OpenAI-compatible server (your own
+    #    vLLM, LM Studio, a proxy, ...). Paste the base URL + key in Settings and
+    #    type the served model name. Routes as openai/<model> against api_base.
+    {"id": "custom", "label": "Internal / custom endpoint (OpenAI-compatible)",
+     "models": [], "needs_key": True},
 ]
 
 
