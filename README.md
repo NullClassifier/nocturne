@@ -4,7 +4,7 @@
 
 <p align="center">
   <a href="https://github.com/NullClassifier/nocturne">
-    <img src="https://readme-typing-svg.demolab.com?font=JetBrains+Mono&weight=700&size=22&pause=1000&color=8B5CF6&center=true&vCenter=true&width=720&lines=AI+agents+that+run+a+pentest+end+to+end.;Plan+%E2%86%92+Exploit+%E2%86%92+Loot+%E2%86%92+Report%2C+autonomously.;Watch+and+steer+from+one+operator+console.;Bring+your+own+key+%E2%80%94+or+your+own+model." alt="NOCTURNE">
+    <img src="https://readme-typing-svg.demolab.com?font=JetBrains+Mono&weight=700&size=22&pause=1000&color=8B5CF6&center=true&vCenter=true&width=720&lines=Agent-assisted+security+assessments.;Plan+%E2%86%92+Test+%E2%86%92+Triage+%E2%86%92+Report.;An+operator+stays+in+control.;Bring+your+own+key+%E2%80%94+or+your+own+model." alt="NOCTURNE">
   </a>
 </p>
 
@@ -19,7 +19,7 @@
 </p>
 
 <p align="center">
-  <b>A team of LLM agents plans and runs a penetration test end to end — and writes the report.</b>
+  <b>Agent-assisted security assessments, with operator control, open-model flexibility, and structured reporting.</b>
 </p>
 
 > [!WARNING]
@@ -28,14 +28,44 @@
 ---
 
 <p align="center">
+  <a href="https://nocturne-main.netlify.app/?demo=1"><strong>Explore the interactive demo</strong></a>
+  · <a href="#quickstart">Run locally</a>
+  · <a href="#architecture">Architecture</a>
+  · <a href="#team--contributors">Team</a>
+</p>
+
+> [!NOTE]
+> **The public demo is a simulation.** It uses mock data and simulated agent activity; it does **not** run penetration tests, invoke live AI models, or connect to an operational security backend.
+
+<p align="center">
   <img src="images/console-overview.jpg" alt="NOCTURNE operator console" width="900">
 </p>
 
+## Interactive demo
+
+**[Launch NOCTURNE — interactive simulated demo](https://nocturne-main.netlify.app/?demo=1)**
+
+The public Netlify deployment lets visitors explore the operator interface without installing the backend, configuring model API keys, or running security tools. The link opens in demo mode and uses the frontend's in-memory mock client. Sessions, agent activity, security findings, and other sample content are **illustrative**, not the results of a live assessment.
+
+To run the same frontend-only experience locally:
+
+```bash
+# From the repository root
+bun install
+bun --filter @nocturne/web dev
+```
+
+Open **http://localhost:5183/?demo=1**. The frontend defaults to `VITE_API_MODE=mock` unless configured otherwise. Production use requires the real backend and an explicitly authorized testing environment.
+
 ## What it is
 
-NOCTURNE runs a team of LLM agents through a pentest. An **orchestrator** plans the engagement and hands objectives to **executor** agents, which run real tools inside a Kali container and report back. You watch and steer the whole run from an operator console: a chat that drives the orchestrator, a live agent graph and activity feed, a live view of the browser the agent drives, a terminal on any reverse shell it catches, and a hand-over-ready report when the work is done.
+NOCTURNE is an open-source, agent-assisted security assessment platform built for **authorized testing**. An LLM-based orchestrator plans an engagement and delegates tasks to executor agents. In live mode, those agents can use security tools in an isolated Kali container; the human operator defines the scope, watches activity, and can steer or stop the run.
 
-Models are **provider-agnostic** through LiteLLM — a hosted API key or your own server, your choice (see [Models](#models)). Every run checkpoints as it goes, so a crash or a restart picks up where it left off.
+The operator console combines chat, a live agent graph and event feed, an agent-controlled browser view, terminals, findings triage, and report generation. Run checkpoints support recovery after interruption.
+
+Model access is **provider-agnostic** through LiteLLM: use a supported hosted endpoint or a self-hosted OpenAI-compatible model server. See [Models](#models) for configuration details.
+
+**Potential users:** independent penetration testers, small security consultancies, and internal security teams seeking a clearer way to coordinate repetitive steps in authorized assessments. A managed or hosted offering is a possible business direction, **not** a claim of current paying customers.
 
 ## Features
 
@@ -89,29 +119,41 @@ Python 3.12 · FastAPI · async SQLAlchemy + asyncpg · Alembic · arq · LangGr
 
 ## Quickstart
 
-You will need [Docker](https://docs.docker.com/get-docker/), [uv](https://docs.astral.sh/uv/), and [bun](https://bun.sh/).
+This starts the **full local development stack**, unlike the frontend-only public demo. You will need [Docker](https://docs.docker.com/get-docker/), [uv](https://docs.astral.sh/uv/), and [bun](https://bun.sh/). Run all commands from the repository root unless stated otherwise.
 
 ```bash
-# 1. infrastructure (Postgres, Redis, S3)
-docker compose -f docker-compose.dev.yml up -d
-
-# 2. Python deps, database, and seed data
-uv sync --group live
-uv run noct db upgrade
-uv run noct seed              # admin user, provider catalog, buckets
-
-# 3. copy the env template
+# 1. Copy the development configuration
 cp .env.example .env
 
-# 4. run the three processes (separate terminals, or `honcho start`)
-cd apps/api    && uv run uvicorn app.main:app --host 127.0.0.1 --port 8080
-cd apps/worker && uv run arq worker.settings.WorkerSettings
-cd apps/web    && bun install && bun run dev
+# 2. Start local infrastructure (PostgreSQL, Redis, S3-compatible storage)
+docker compose -f docker-compose.dev.yml up -d
+
+# 3. Install Python dependencies and prepare the database
+uv sync --group live
+uv run noct db upgrade
+uv run noct seed
+
+# 4. Install frontend dependencies
+bun install
 ```
 
-Open **http://localhost:5183** and sign in with `admin` / `admin`.
+In **three separate terminals** (each starting from the repository root):
 
-> Runs execute real tools by default and need Docker to pull the Kali image. To explore the whole console with **no model key and no real execution**, set `NOCTURNE_RUN_MODE=sim` in `.env`.
+```bash
+# Terminal 1 — API
+cd apps/api && uv run uvicorn app.main:app --host 127.0.0.1 --port 8080
+
+# Terminal 2 — worker
+cd apps/worker && uv run arq worker.settings.WorkerSettings
+
+# Terminal 3 — operator UI
+cd apps/web && bun run dev
+```
+
+Open **http://localhost:5183**. The seeded development credentials are `admin` / `admin` — **local development only**. Change default credentials before any network-accessible deployment.
+
+> [!CAUTION]
+> The backend defaults to live execution and can run real tools. Use **only** with targets you own or have written permission to test. To inspect the backend-supported simulation without real security-tool execution, set `NOCTURNE_RUN_MODE=sim` in `.env`. For the simpler UI-only demo with no backend, use the [interactive demo](#interactive-demo).
 
 ### Practice targets
 
@@ -138,7 +180,7 @@ Keys are stored in the database, encrypted at rest. Cost and token usage for a r
 
 ## Deploy (self-host)
 
-Run the full stack behind a Caddy reverse proxy so the web app and API share one origin (no CORS) and HTTPS is handled for you:
+The full deployment is separate from the public Netlify demo. The bundled deployment uses Docker Compose and a Caddy reverse proxy so the web app and API share an origin. HTTPS is available when correctly configured with a domain:
 
 ```bash
 git clone https://github.com/NullClassifier/nocturne.git
@@ -146,7 +188,9 @@ cd nocturne
 ./deploy.sh
 ```
 
-The script installs Docker if missing and asks how NOCTURNE will be reached (direct IP, a domain with automatic Let's Encrypt, or behind Cloudflare/another proxy). It writes your answers to `.env`, pulls the images, and starts the stack. Only ports 80/443 are published; Postgres, Redis, S3, the API, and the web app stay on the internal network. See [docs/DEPLOY.md](docs/DEPLOY.md).
+The script can install Docker if missing and asks how NOCTURNE should be reached (direct IP, a domain with automatic Let's Encrypt, or behind an existing proxy). It writes deployment configuration, pulls images, and starts the stack. By default, only ports 80/443 are exposed by the Compose deployment; backing services remain on the internal network. See [docs/DEPLOY.md](docs/DEPLOY.md).
+
+**Do not expose a live instance with development credentials or unrestricted targets.** Configure strong credentials, secrets, HTTPS, a restrictive assessment scope, and access controls before making any service reachable from the Internet. See [Hardening](docs/HARDENING.md).
 
 ## Configuration
 
@@ -183,9 +227,29 @@ deploy.sh                    interactive self-host deploy
 - [Cost & token accounting](docs/COST.md) — how run spend is measured.
 - [Command palette & shortcuts](docs/SHORTCUTS.md) · [Updating](docs/UPDATING.md) · [Console shell](docs/APP-SHELL.md) · [Form controls](docs/FORMS.md)
 
+## Hacktoberfest 2026: Week 2 development
+
+NOCTURNE builds on an earlier prototype; its complete codebase was **not** created during the October 12–18 challenge period. During that period, the team made documented improvements including:
+
+- Additional provider configuration options for Google AI Studio, OpenRouter, and custom OpenAI-compatible endpoints.
+- Usage and cost metering for supported hosted Gemma models.
+- Reproducible local object storage using SeaweedFS.
+- Updates to the model-selection interface and setup documentation.
+
+The repository's public commit history records these changes and the earlier foundation. The frontend-only public demo is provided to make the operator experience easy to explore; it should not be confused with a live Gemma-powered pentest.
+
+## Team & contributors
+
+NOCTURNE is a collaborative project developed by the **Netrunners team**.
+
+- [**@NullClassifier**](https://github.com/NullClassifier) — developer and repository maintainer.
+- [**@ismayilysfli**](https://github.com/ismayilysfli) — developer and project collaborator.
+
+Contributions have also been exchanged outside GitHub and integrated into the repository by a teammate, so commit authorship is not intended to be a complete record of who worked on the project.
+
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for setup, tests, and conventions, and the [Code of Conduct](CODE_OF_CONDUCT.md). Report security issues privately per [SECURITY.md](SECURITY.md), not public issues.
+Contributions, bug reports, and documentation improvements are welcome. See [CONTRIBUTING.md](CONTRIBUTING.md) for setup, tests, and conventions, and the [Code of Conduct](CODE_OF_CONDUCT.md). Report security issues privately per [SECURITY.md](SECURITY.md), not public issues.
 
 ## Legal notice and responsible use
 
